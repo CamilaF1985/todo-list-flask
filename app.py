@@ -4,22 +4,33 @@ import os
 
 app = Flask(__name__)
 
-# Archivos de datos
-initial_todos_file = "initial_todos.json"
+# Archivo de datos principal
 todos_file = "todos.json"
 
-# Cargar datos iniciales desde el archivo JSON
-def cargar_todos():
-    if os.path.exists(initial_todos_file):
-        with open(initial_todos_file, "r") as json_file:
-            return json.load(json_file)
-    elif os.path.exists(todos_file):
+# Cargar o inicializar datos desde el archivo JSON principal
+def cargar_o_inicializar_todos():
+    if os.path.exists(todos_file):
         with open(todos_file, "r") as json_file:
-            return json.load(json_file)
+            data = json.load(json_file)
+            if not data:
+                # Si el archivo existe pero está vacío, inicializa con tareas iniciales
+                tareas_iniciales = [
+                    {"done": True, "label": "Tarea inicial 1"},
+                    {"done": True, "label": "Tarea inicial 2"}
+                ]
+                return tareas_iniciales
+            return data
     else:
-        return []
+        # Si el archivo no existe, crea el archivo con tareas iniciales y devuelve esas tareas
+        tareas_iniciales = [
+            {"done": True, "label": "Tarea inicial 1"},
+            {"done": True, "label": "Tarea inicial 2"}
+        ]
+        with open(todos_file, "w") as json_file:
+            json.dump(tareas_iniciales, json_file)
+        return tareas_iniciales
 
-todos = cargar_todos()
+todos = cargar_o_inicializar_todos()
 
 def guardar_a_json():
     with open(todos_file, "w") as json_file:
@@ -38,6 +49,14 @@ def obtener_todos():
 def agregar_todo():
     try:
         nuevo_todo = request.get_json()
+
+        # Validar que el campo 'label' no sea nulo
+        if not nuevo_todo.get("label"):
+            return jsonify({"error": "El campo 'label' no puede estar vacio"}), 400
+
+        # Establecer automáticamente el estado de 'done' en True
+        nuevo_todo["done"] = True
+
         todos.append(nuevo_todo)
         guardar_a_json()  # Guarda en el archivo JSON
         return jsonify(todos)
@@ -52,12 +71,15 @@ def eliminar_todo(posicion):
             guardar_a_json()  # Guarda en el archivo JSON
             return jsonify(todos)
         else:
-            return jsonify({"error": "Posición no encontrada"}), 404
+            return jsonify({"error": "Posicion no encontrada"}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(debug=True)
+
+
+
 
 
 
